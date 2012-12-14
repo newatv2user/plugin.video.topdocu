@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.video.topdocu"
+       name="TopDocumentaries"
+       version="0.0.1"
+       provider-name="nixa">
+  <requires>
+    <import addon="xbmc.python" version="2.0"/>
+    <import addon="script.module.parsedom" version="0.9.1"/>
+    <import addon="script.module.videohosts.beta" version="0.0.1"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource"
+            library="default.py">
+        <provides>video</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en">Watch documentaries from topdocumentaryfilms.com</summary>
+    <description lang="en">Place where you want to watch documentary shows covering various topics.</description>
+     <platform>all</platform>
+  </extension>
+</addon>

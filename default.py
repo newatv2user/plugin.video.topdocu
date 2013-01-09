@@ -2,18 +2,11 @@ import urllib, urllib2, re, sys, cookielib, os
 import xbmc, xbmcgui, xbmcplugin, xbmcaddon, xbmcvfs
 import CommonFunctions
 import hosts
+import StorageServer
 
-# plugin constants
-version = "0.0.1"
-plugin = "TopDoc - " + version
-#pluginHandle = int(sys.argv[1])
-
-__settings__ = xbmcaddon.Addon(id='plugin.video.topdocu')
-rootDir = __settings__.getAddonInfo('path')
-if rootDir[-1] == ';':
-    rootDir = rootDir[0:-1]
-rootDir = xbmc.translatePath(rootDir)
-settingsDir = __settings__.getAddonInfo('profile')
+Addon = xbmcaddon.Addon()
+Addonid = Addon.getAddonInfo('id')
+settingsDir = Addon.getAddonInfo('profile')
 settingsDir = xbmc.translatePath(settingsDir)
 cacheDir = os.path.join(settingsDir, 'cache')
 
@@ -21,21 +14,18 @@ cacheDir = os.path.join(settingsDir, 'cache')
 #dbglevel = 3 # Do NOT change from 3
 
 common = CommonFunctions#.CommonFunctions()
-common.plugin = plugin
-
 common.dbg = False # Default
 common.dbglevel = 3 # Default
 
-programs_thumb = os.path.join(__settings__.getAddonInfo('path'), 'resources', 'media', 'programs.png')
-topics_thumb = os.path.join(__settings__.getAddonInfo('path'), 'resources', 'media', 'topics.png')
-search_thumb = os.path.join(__settings__.getAddonInfo('path'), 'resources', 'media', 'search.png')
-next_thumb = os.path.join(__settings__.getAddonInfo('path'), 'resources', 'media', 'next.png')
+# initialise cache object to speed up plugin operation
+cache = StorageServer.StorageServer(Addonid, 12)
+
+programs_thumb = os.path.join(Addon.getAddonInfo('path'), 'resources', 'media', 'programs.png')
+topics_thumb = os.path.join(Addon.getAddonInfo('path'), 'resources', 'media', 'topics.png')
+search_thumb = os.path.join(Addon.getAddonInfo('path'), 'resources', 'media', 'search.png')
+next_thumb = os.path.join(Addon.getAddonInfo('path'), 'resources', 'media', 'next.png')
 
 pluginhandle = int(sys.argv[1])
-#print 'plugin handle: ' + str(pluginhandle)
-#addonSettings = xbmcaddon.Addon(id='plugin.video.topdocu')
-#videoQuality = ['small', 'medium', 'large', 'hd720']
-#separator = '$$AV$$'
 
 ########################################################
 ## URLs
@@ -70,13 +60,13 @@ class VideoItem:
         self.Url = ''
         
 ## Get URL
-def getURL( url ):
-    print plugin + ' getURL :: url = ' + url
+def getURL(url):
+    print 'getURL :: url = ' + url
     cj = cookielib.LWPCookieJar()
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
     opener.addheaders = [('User-Agent', 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2;)')]
-    usock=opener.open(url)
-    response=usock.read()
+    usock = opener.open(url)
+    response = usock.read()
     usock.close()
     return response
         
@@ -113,100 +103,11 @@ def load_local_page():
     f.close()
     return data
 
-##################
-## Function to parse given page
-###################
-"""
-def ParseSitePage(url, Featured=False, Recommended=False, Editors=False, Categories=False):
-    xbmc.log('In ParseSitePage.')
-    ## Do something useful here
-    '''req = urllib2.Request(url)
-    req.add_header('User-Agent', USER_AGENT)
-    response = urllib2.urlopen(req)
-    contents = response.read()
-    response.close()'''
-    if Featured == True:
-        contents = save_web_page(url)
-    else:
-        contents = load_local_page()
-    #print contents
-    # Featured items
-    global Featured_List
-    if Featured == True and len(Featured_List) < 1:
-        featDOM1 = common.parseDOM(contents, "div", attrs = { "class": "docusrandom"})
-        
-        for item in featDOM1:
-            featuredItem = VideoItem()
-            Title = common.parseDOM(item, "img", ret="alt")
-            featuredItem.Title = Title[0]
-            #xbmc.log(Title[0])
-            
-            Plot = common.parseDOM(item, "p")
-            featuredItem.Plot = common.replaceHTMLCodes(common.stripTags(Plot[0]))
-            #xbmc.log(common.stripTags(Plot[0]))
-            
-            Image = common.parseDOM(item, "img", ret="src")
-            featuredItem.Image = Image[0]
-            
-            Url = common.parseDOM(item, "a", ret="href")
-            featuredItem.Url = Url[0]
-            Featured_List.append(featuredItem)
-            
-        featDOM2 = common.parseDOM(contents, "div", attrs = { "class": "docusrandomlast"})
-        for item in featDOM2:
-            featuredItem = VideoItem()
-            Title = common.parseDOM(item, "img", ret="alt")
-            featuredItem.Title = Title[0]
-            #xbmc.log(Title[0])
-            
-            Plot = common.parseDOM(item, "p")
-            featuredItem.Plot = common.replaceHTMLCodes(common.stripTags(Plot[0]))
-            #xbmc.log(common.stripTags(Plot[0]))
-            
-            Image = common.parseDOM(item, "img", ret="src")
-            featuredItem.Image = Image[0]
-            
-            Url = common.parseDOM(item, "a", ret="href")
-            featuredItem.Url = Url[0]
-            Featured_List.append(featuredItem)
-    ## End of Featured Items
-    
-    ## Recommended Documentaries
-    global Recommended_List
-    if Recommended == True and len(Recommended_List) < 1:
-        Recommended_List = ParseSection(contents, "Recommended Documentaries")
-        xbmc.log(str(len(Recommended_List)))
-    ## End of Recommended Items
-    
-    ## Editor's Picks
-    global EditorsPick_List
-    if Editors == True and len(EditorsPick_List) < 1:
-        EditorsPick_List = ParseSection(contents, "Editors' Picks")
-        xbmc.log(str(len(EditorsPick_List)))
-    ## End of Editor's Picks
-    
-    ## Categories
-    global Categories_List
-    if Categories == True and len(Categories_List) < 1:
-        catDOM = common.parseDOM(contents, "li", attrs = { "class": "cat-item cat-item-.+?"})
-        for dCat in catDOM:
-            Title = common.stripTags(dCat)
-            href = common.parseDOM(dCat, "a", ret="href")
-            Url = href[0]
-            catItem = VideoItem()
-            catItem.Title = Title
-            catItem.Url = Url
-            Categories_List.append(catItem)
-    xbmc.log(str(len(Categories_List)))
-
-## End of ParseSitePage
-"""
-
 ####################################
 def Get_Categories_List():
     Categories_List = []
-    contents = load_local_page()
-    catDOM = common.parseDOM(contents, "li", attrs = { "class": "cat-item cat-item-.+?"})
+    contents = cache.cacheFunction(getURL, SITE + BROWSE) #load_local_page()
+    catDOM = common.parseDOM(contents, "li", attrs={ "class": "cat-item cat-item-.+?"})
     for dCat in catDOM:
         Title = common.stripTags(dCat)
         href = common.parseDOM(dCat, "a", ret="href")
@@ -220,7 +121,7 @@ def Get_Categories_List():
 #####################################
 def Get_Recommended_List():
     #Recommended_List = []
-    contents = load_local_page()
+    contents = cache.cacheFunction(getURL, SITE + BROWSE) #load_local_page()
     contents = contents.replace("<li>", "<li />")
     Recommended_List = ParseSection(contents, "Recommended Documentaries")
     return Recommended_List
@@ -228,7 +129,7 @@ def Get_Recommended_List():
 #####################################
 def Get_EditorsPick_List():
     #EditorsPick_List = []
-    contents = load_local_page()
+    contents = cache.cacheFunction(getURL, SITE + BROWSE) #load_local_page()
     contents = contents.replace("<li>", "<li />")
     EditorsPick_List = ParseSection(contents, "Editors' Picks")
     return EditorsPick_List
@@ -244,7 +145,7 @@ def Get_Featured_List():
         contents = result["content"]
         contents = contents.replace("\n", " ")
         
-    featDOM1 = common.parseDOM(contents, "div", attrs = { "class": "docusrandom"})
+    featDOM1 = common.parseDOM(contents, "div", attrs={ "class": "docusrandom"})
         
     for item in featDOM1:
         featuredItem = VideoItem()
@@ -263,7 +164,7 @@ def Get_Featured_List():
         featuredItem.Url = Url[0]
         Featured_List.append(featuredItem)
             
-    featDOM2 = common.parseDOM(contents, "div", attrs = { "class": "docusrandomlast"})
+    featDOM2 = common.parseDOM(contents, "div", attrs={ "class": "docusrandomlast"})
     for item in featDOM2:
         featuredItem = VideoItem()
         Title = common.parseDOM(item, "img", ret="alt")
@@ -289,13 +190,13 @@ def Get_Featured_List():
 ###################
 def ParseSection(source, SectionName):
     retlist = []
-    recDOM1 = common.parseDOM(source, "li", attrs = { "style": "border:1px dotted #ccc;"})
+    recDOM1 = common.parseDOM(source, "li", attrs={ "style": "border:1px dotted #ccc;"})
     for item in recDOM1:
         sectionName = common.parseDOM(item, "strong")
         print sectionName[0]
         if sectionName[0] != SectionName:
             continue
-        print item
+        #print item
         recDOM2 = common.parseDOM(item, "li")
         for itemLi in recDOM2:
             #xbmc.log(itemLi)
@@ -432,7 +333,7 @@ def Categories():
             mode = M_DO_NOTHING
         else:
             mode = M_Browse
-        xbmc.log(CatItem.Url)
+        #xbmc.log(CatItem.Url)
         addDir(problemTitle, CatItem.Url, mode, CatItem.Image, '', '', CatItem.Plot)
         
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
@@ -447,7 +348,7 @@ def Browse(url):
     xbmcplugin.setContent(int(sys.argv[1]), 'movies')
     if url == '':
         url = SITE + BROWSE
-        contents = save_web_page(url)
+        contents = cache.cacheFunction(getURL, url) #save_web_page(url)
     else:
         result = common.fetchPage({"link": url})
         #print 'result status: ' + result["status"]
@@ -462,11 +363,11 @@ def Browse(url):
     #contents = response.read()
     #response.close()
     
-    itemsDOM = common.parseDOM(contents, "div", attrs = { "class": "wrapexcerpt"})
+    itemsDOM = common.parseDOM(contents, "div", attrs={ "class": "wrapexcerpt"})
     for item in itemsDOM:
         listItem = VideoItem()
         Title = common.parseDOM(item, "img", ret="alt")
-        listItem.Title = Title[0]
+        listItem.Title = common.replaceHTMLCodes(Title[0])
         #xbmc.log(Title[0])
             
         Plot = common.parseDOM(item, "p")
@@ -482,17 +383,17 @@ def Browse(url):
         xbmc.log(listItem.Title)
         addDir(listItem.Title, listItem.Url, M_GET_VIDEO_LINKS, listItem.Image, '', '', listItem.Plot)
     
-    test = common.parseDOM(contents, "div", attrs = { "class": "pagination.*"})
+    test = common.parseDOM(contents, "div", attrs={ "class": "pagination.*"})
     nextPage = re.compile('href="(.+?)">Next').findall(test[0])
     for url in nextPage:
         print 'WTF Man? ' + url
         addDir('Next', url, M_Browse, next_thumb, '', '', '')
     
     bottom = [
-        (__settings__.getLocalizedString(30011), programs_thumb, M_Featured),
-        (__settings__.getLocalizedString(30012), programs_thumb, M_Recommended),
-        (__settings__.getLocalizedString(30013), programs_thumb, M_EditorsPick),
-        (__settings__.getLocalizedString(30014), topics_thumb, M_Categories)
+        (Addon.getLocalizedString(30011), programs_thumb, M_Featured),
+        (Addon.getLocalizedString(30012), programs_thumb, M_Recommended),
+        (Addon.getLocalizedString(30013), programs_thumb, M_EditorsPick),
+        (Addon.getLocalizedString(30014), topics_thumb, M_Categories)
         ]
     for name, thumbnailImage, mode in bottom:
         addDir(name, '', mode, thumbnailImage, '', '', '')
@@ -515,32 +416,32 @@ def Playlist(url):
     Matches = hosts.resolve(itemsDOM[0])'''
     Matches = None
     try:
-        xbmc.executebuiltin( "ActivateWindow(busydialog)" )
+        xbmc.executebuiltin("ActivateWindow(busydialog)")
         contents = getURL(url)
         contents = contents.replace("\n", " ")
     
-        itemsDOM = common.parseDOM(contents, "div", attrs = { "class": "post"})
+        itemsDOM = common.parseDOM(contents, "div", attrs={ "class": "post"})
         Matches = hosts.resolve(itemsDOM[0])
     except:
         pass
     finally:
-        xbmc.executebuiltin( "Dialog.Close(busydialog)" )
+        xbmc.executebuiltin("Dialog.Close(busydialog)")
     if Matches == None or len(Matches) == 0:
-        xbmcplugin.setResolvedUrl(pluginhandle, False, 
+        xbmcplugin.setResolvedUrl(pluginhandle, False,
                                   xbmcgui.ListItem())
         dialog = xbmcgui.Dialog()
         ok = dialog.ok('Nothing to play', 'A playable url could not be found.')
         return
     if Matches[0].find('playlist') > 0:
         print Matches[0]
-        return xbmc.executebuiltin("xbmc.PlayMedia("+Matches[0]+")")
+        return xbmc.executebuiltin("xbmc.PlayMedia(" + Matches[0] + ")")
         
     playList = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
     playList.clear()
     for PlayItem in Matches:
         print PlayItem
         listitem = xbmcgui.ListItem('Video')
-        listitem.setInfo( type="video", infoLabels={ "Title": name } )
+        listitem.setInfo(type="video", infoLabels={ "Title": name })
         listitem.setProperty("IsPlayable", "true")
         playList.add(url=PlayItem, listitem=listitem)
     xbmcPlayer = xbmc.Player()
@@ -550,25 +451,25 @@ def Playlist(url):
 def SetViewMode():
     try:
         # if (xbmc.getSkinDir() == "skin.confluence"):
-        if __settings__.getSetting('view_mode') == "1": # List
+        if Addon.getSetting('view_mode') == "1": # List
             xbmc.executebuiltin('Container.SetViewMode(502)')
-        if __settings__.getSetting('view_mode') == "2": # Big List
+        if Addon.getSetting('view_mode') == "2": # Big List
             xbmc.executebuiltin('Container.SetViewMode(51)')
-        if __settings__.getSetting('view_mode') == "3": # Thumbnails
+        if Addon.getSetting('view_mode') == "3": # Thumbnails
             xbmc.executebuiltin('Container.SetViewMode(500)')
-        if __settings__.getSetting('view_mode') == "4": # Poster Wrap
+        if Addon.getSetting('view_mode') == "4": # Poster Wrap
             xbmc.executebuiltin('Container.SetViewMode(501)')
-        if __settings__.getSetting('view_mode') == "5": # Fanart
+        if Addon.getSetting('view_mode') == "5": # Fanart
             xbmc.executebuiltin('Container.SetViewMode(508)')
-        if __settings__.getSetting('view_mode') == "6":  # Media info
+        if Addon.getSetting('view_mode') == "6":  # Media info
             xbmc.executebuiltin('Container.SetViewMode(504)')
-        if __settings__.getSetting('view_mode') == "7": # Media info 2
+        if Addon.getSetting('view_mode') == "7": # Media info 2
             xbmc.executebuiltin('Container.SetViewMode(503)')
 
-	if __settings__.getSetting('view_mode') == "0": # Default Media Info for Quartz
+        if Addon.getSetting('view_mode') == "0": # Default Media Info for Quartz
             xbmc.executebuiltin('Container.SetViewMode(52)')
     except:
-        print "SetViewMode Failed: " + __settings__.getSetting('view_mode')
+        print "SetViewMode Failed: " + Addon.getSetting('view_mode')
         print "Skin: " + xbmc.getSkinDir()
 
 def geturl():
@@ -696,7 +597,7 @@ try:
 except:
         pass
 
-xbmc.log( "Mode: " + str(mode) )
+xbmc.log("Mode: " + str(mode))
 print "URL: " + str(url)
 print "Name: " + str(name)
 print "Title: " + str(titles)

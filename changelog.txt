@@ -1,35 +1,5 @@
-v1.4.4:
-  - minor fixes
-
-v1.4.3:
-  - fixes
-
-v1.4.2:
-  - speedup loading video urls
-
-v1.4.1:
-  - added Megavideo, cleanup codes
-
-v1.4.0:
-  - reduce loading time Youtube playlist, cleanup codes
-
-v1.3.3:
-  - fix regex Youtube
-
-v1.3.2:
-  - supported Dailymotion videos (playlist)
-
-v1.3.1:
-  - fix supported VeeHD
-
-v1.3:
-  - supported VeeHD & Dailymotion videos
-
-v1.2:
-  - supported Vimeo
-
-v1.1:
-  - supported Series (Youtube)
-
-v1.0:
-  - initial release
+[B]Version 0.0.2[/B]
+  - Some fixes and cleanup
+  
+[B]Version 0.0.1[/B]
+  - initial adaptation from nixa
